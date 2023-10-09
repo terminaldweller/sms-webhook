@@ -1,0 +1,57 @@
+version: "3.9"
+services:
+  sms-webhook:
+    image: sms-webhook
+    build:
+      context: .
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    networks:
+      - smsnet
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8090:8090"
+    depends_on:
+      - redis
+    # volumes:
+    #   - /etc/letsencrypt/live/sms.terminaldweller.com/fullchain.pem:/etc/letsencrypt/live/sms.terminaldweller.com/fullchain.pem
+    #   - /etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem:/etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem
+    cap_drop:
+      - ALL
+    environment:
+      - SERVER_DEPLOYMENT_TYPE=deployment
+    entrypoint: ["/sms-webhook/sms-webhook"]
+    command: ["serve", "--http=0.0.0.0:8090"]
+    volumes:
+      - pb-vault:/sms-webhook/pb_data
+  redis:
+    image: redis:7.2-alpine
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    networks:
+      - smsnet
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - sms-vault:/data/
+networks:
+  smsnet:
+    driver: bridge
+volumes:
+  sms-vault:
+  pb-vault:
