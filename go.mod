@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
+	github.com/lrstanley/girc v0.0.0-20230911164840-f47717952bf9
 	github.com/pocketbase/pocketbase v0.18.9
 )
 

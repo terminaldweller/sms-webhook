@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v5"
+	"github.com/lrstanley/girc"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -26,6 +28,15 @@ type SMSInfo struct {
 	SentStamp     int64  `json:"sentStamp"`
 	ReceivedStamp int64  `json:"receivedStamp"`
 	Sim           string `json:"sim"`
+}
+
+type IRCInfo struct {
+	ircServer   string
+	ircPort     int
+	ircNick     string
+	ircSaslUser string
+	ircSaslPass string
+	ircChannel  string
 }
 
 func postHandler(context echo.Context) error {
@@ -47,7 +58,55 @@ func postHandler(context echo.Context) error {
 	return context.JSON(http.StatusOK, smsInfo)
 }
 
+func runIRC(ircInfo IRCInfo) *girc.Client {
+	irc := girc.New(girc.Config{
+		Server:    ircInfo.ircServer,
+		Port:      ircInfo.ircPort,
+		Nick:      ircInfo.ircNick,
+		User:      "soulshack",
+		Name:      "soulshack",
+		SSL:       true,
+		TLSConfig: &tls.Config{InsecureSkipVerify: false},
+	})
+
+	saslUser := ircInfo.ircSaslUser
+	saslPass := ircInfo.ircSaslPass
+	if saslUser != "" && saslPass != "" {
+		irc.Config.SASL = &girc.SASLPlain{
+			User: ircInfo.ircSaslUser,
+			Pass: ircInfo.ircSaslPass,
+		}
+	}
+
+	irc.Handlers.AddBg(girc.PRIVMSG, func(c *girc.Client, e girc.Event) {
+	})
+
+	if err := irc.Connect(); err != nil {
+		log.Fatal(err)
+		return nil
+	}
+	return irc
+}
+
 func main() {
+	ircServer := flag.String("ircserver", "irc.terminaldweller.com", "the address of the irc server to connect to")
+	ircPort := flag.Int("ircport", 6697, "the port of the irc server to connect to")
+	ircNick := flag.String("ircnick", "soulhack", "the nick to use on the irc server")
+	ircSaslUser := flag.String("ircsasluser", "soulhack", "the sasl user to use on the irc server")
+	ircSaslPass := flag.String("ircsaslpass", "", "the sasl password to use on the irc server")
+	ircChannel := flag.String("ircchannel", "#soulhack", "the channel to join on the irc server")
+
+	ircInfo := IRCInfo{
+		ircServer:   *ircServer,
+		ircPort:     *ircPort,
+		ircNick:     *ircNick,
+		ircSaslUser: *ircSaslUser,
+		ircSaslPass: *ircSaslPass,
+		ircChannel:  *ircChannel,
+	}
+
+	ircClient := runIRC(ircInfo)
+
 	redisAddress := flag.String("redisaddress", "redis:6379", "determines the address of the redis instance")
 	redisPassword := flag.String("redispassword", "", "determines the password of the redis db")
 	redisDB := flag.Int64("redisdb", 0, "determines the db number")
@@ -66,7 +125,9 @@ func main() {
 	app := pocketbase.New()
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		e.Router.POST("/sms/*", postHandler)
+		e.Router.POST("/sms", postHandler)
+
+		ircClient.Handlers.AddBg(girc.PRIVMSG, func(c *girc.Client, e girc.Event) {})
 
 		return nil
 	})

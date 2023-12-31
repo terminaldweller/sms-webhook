@@ -31,7 +31,7 @@ services:
     volumes:
       - pb-vault:/sms-webhook/pb_data
   redis:
-    image: redis:7.2-alpine
+    image: redis:7.2.3-alpine3.18
     deploy:
       resources:
         limits:
