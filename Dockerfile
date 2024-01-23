@@ -4,8 +4,8 @@ RUN apk update && apk upgrade && \
 RUN git clone https://github.com/terminaldweller/sms-webhook
 WORKDIR /sms-webhook
 COPY go.sum go.mod /sms-webhook/
-COPY *.go /sms-webhook/
 RUN go mod download
+COPY *.go /sms-webhook/
 ENV CGO_ENABLED=0
 RUN go build
 

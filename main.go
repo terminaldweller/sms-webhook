@@ -2,14 +2,16 @@ package main
 
 import (
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v5"
 	"github.com/lrstanley/girc"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -22,7 +24,13 @@ const (
 	redisWriteTimetout = 10
 )
 
-type SMSInfo struct {
+type handlerWrapper struct {
+	irc *girc.Client
+	// irc    chan *girc.Client
+	config TomlConfig
+}
+
+type SMS struct {
 	From          string `json:"from"`
 	Text          string `json:"text"`
 	SentStamp     int64  `json:"sentStamp"`
@@ -30,92 +38,108 @@ type SMSInfo struct {
 	Sim           string `json:"sim"`
 }
 
-type IRCInfo struct {
-	ircServer   string
-	ircPort     int
-	ircNick     string
-	ircSaslUser string
-	ircSaslPass string
-	ircChannel  string
+type TomlConfig struct {
+	IrcServer     string
+	IrcPort       int
+	IrcNick       string
+	IrcSaslUser   string
+	IrcSaslPass   string
+	IrcChannel    string
+	RedisAddress  string
+	RedisPassword string
+	RedisDB       int
 }
 
-func postHandler(context echo.Context) error {
-	smsInfo := new(SMSInfo)
-	if err := context.Bind(smsInfo); err != nil {
+// curl -X 'POST' 'http://127.0.0.1:8090/sms' -H 'content-type: application/json; charset=utf-8' -d $'{"from":"1234567890","text":"Test"}'
+func (hw handlerWrapper) postHandler(context echo.Context) error {
+	sms := new(SMS)
+	if err := context.Bind(sms); err != nil {
 		return context.String(http.StatusBadRequest, "bad request")
 	}
 
-	smsInfoReal := SMSInfo{
-		From:          smsInfo.From,
-		Text:          smsInfo.Text,
-		SentStamp:     smsInfo.SentStamp,
-		ReceivedStamp: smsInfo.ReceivedStamp,
-		Sim:           smsInfo.Sim,
+	smsInfoReal := SMS{
+		From:          sms.From,
+		Text:          sms.Text,
+		SentStamp:     sms.SentStamp,
+		ReceivedStamp: sms.ReceivedStamp,
+		Sim:           sms.Sim,
 	}
+
+	for {
+		fmt.Println("one")
+		// irc = <-hw.irc
+		if hw.irc != nil {
+			if hw.irc.IsConnected() {
+				break
+			}
+		}
+		fmt.Println("two")
+	}
+
+	hw.irc.Cmd.Message(hw.config.IrcChannel, fmt.Sprintf("From: %s, Text: %s", sms.From, sms.Text))
 
 	fmt.Println(smsInfoReal)
 
-	return context.JSON(http.StatusOK, smsInfo)
+	return context.JSON(http.StatusOK, sms)
 }
 
-func runIRC(ircInfo IRCInfo) *girc.Client {
+func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
 	irc := girc.New(girc.Config{
-		Server:    ircInfo.ircServer,
-		Port:      ircInfo.ircPort,
-		Nick:      ircInfo.ircNick,
-		User:      "soulshack",
-		Name:      "soulshack",
+		Server:    appConfig.IrcServer,
+		Port:      appConfig.IrcPort,
+		Nick:      appConfig.IrcNick,
+		User:      appConfig.IrcNick,
+		Name:      appConfig.IrcNick,
 		SSL:       true,
-		TLSConfig: &tls.Config{InsecureSkipVerify: false},
+		TLSConfig: &tls.Config{InsecureSkipVerify: true},
 	})
 
-	saslUser := ircInfo.ircSaslUser
-	saslPass := ircInfo.ircSaslPass
+	saslUser := appConfig.IrcSaslUser
+	saslPass := appConfig.IrcSaslPass
 	if saslUser != "" && saslPass != "" {
 		irc.Config.SASL = &girc.SASLPlain{
-			User: ircInfo.ircSaslUser,
-			Pass: ircInfo.ircSaslPass,
+			User: appConfig.IrcSaslUser,
+			Pass: appConfig.IrcSaslPass,
 		}
 	}
 
-	irc.Handlers.AddBg(girc.PRIVMSG, func(c *girc.Client, e girc.Event) {
+	irc.Handlers.AddBg(girc.CONNECTED, func(c *girc.Client, e girc.Event) {
+		c.Cmd.Join(appConfig.IrcChannel)
 	})
 
-	if err := irc.Connect(); err != nil {
-		log.Fatal(err)
-		return nil
+	// irc.Handlers.AddBg(girc.PRIVMSG, func(c *girc.Client, e girc.Event) {})
+	ircChan <- irc
+
+	for {
+		if err := irc.Connect(); err != nil {
+			log.Println(err)
+			log.Println("reconnecting in 30 seconds")
+			time.Sleep(30 * time.Second)
+		} else {
+			return
+		}
 	}
-	return irc
 }
 
 func main() {
-	ircServer := flag.String("ircserver", "irc.terminaldweller.com", "the address of the irc server to connect to")
-	ircPort := flag.Int("ircport", 6697, "the port of the irc server to connect to")
-	ircNick := flag.String("ircnick", "soulhack", "the nick to use on the irc server")
-	ircSaslUser := flag.String("ircsasluser", "soulhack", "the sasl user to use on the irc server")
-	ircSaslPass := flag.String("ircsaslpass", "", "the sasl password to use on the irc server")
-	ircChannel := flag.String("ircchannel", "#soulhack", "the channel to join on the irc server")
+	var appConfig TomlConfig
 
-	ircInfo := IRCInfo{
-		ircServer:   *ircServer,
-		ircPort:     *ircPort,
-		ircNick:     *ircNick,
-		ircSaslUser: *ircSaslUser,
-		ircSaslPass: *ircSaslPass,
-		ircChannel:  *ircChannel,
+	data, err := os.ReadFile("/opt/smswebhook/config.toml")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	ircClient := runIRC(ircInfo)
+	err = toml.Unmarshal(data, &appConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	redisAddress := flag.String("redisaddress", "redis:6379", "determines the address of the redis instance")
-	redisPassword := flag.String("redispassword", "", "determines the password of the redis db")
-	redisDB := flag.Int64("redisdb", 0, "determines the db number")
-	flag.Parse()
+	log.Println(appConfig)
 
 	rdb = redis.NewClient(&redis.Options{
-		Addr:         *redisAddress,
-		Password:     *redisPassword,
-		DB:           int(*redisDB),
+		Addr:         appConfig.RedisAddress,
+		Password:     appConfig.RedisPassword,
+		DB:           appConfig.RedisDB,
 		DialTimeout:  redisDialTimeout,
 		ReadTimeout:  redisReadTimeout,
 		WriteTimeout: redisWriteTimetout,
@@ -124,10 +148,14 @@ func main() {
 
 	app := pocketbase.New()
 
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		e.Router.POST("/sms", postHandler)
+	ircChan := make(chan *girc.Client, 1)
+	hw := handlerWrapper{irc: nil, config: appConfig}
 
-		ircClient.Handlers.AddBg(girc.PRIVMSG, func(c *girc.Client, e girc.Event) {})
+	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		go runIRC(appConfig, ircChan)
+		hw.irc = <-ircChan
+
+		e.Router.POST("/sms", hw.postHandler)
 
 		return nil
 	})

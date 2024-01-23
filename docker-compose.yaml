@@ -24,12 +24,15 @@ services:
     #   - /etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem:/etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem
     cap_drop:
       - ALL
+    dns:
+      - 9.9.9.9
     environment:
       - SERVER_DEPLOYMENT_TYPE=deployment
     entrypoint: ["/sms-webhook/sms-webhook"]
     command: ["serve", "--http=0.0.0.0:8090"]
     volumes:
       - pb-vault:/sms-webhook/pb_data
+      - ./config.toml:/opt/smswebhook/config.toml
   redis:
     image: redis:7.2.3-alpine3.18
     deploy:
