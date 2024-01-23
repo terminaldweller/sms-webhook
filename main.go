@@ -22,6 +22,7 @@ const (
 	redisDialTimeout   = 5
 	redisReadTimeout   = 10
 	redisWriteTimetout = 10
+	reconnectTime      = 30
 )
 
 type handlerWrapper struct {
@@ -66,21 +67,18 @@ func (hw handlerWrapper) postHandler(context echo.Context) error {
 	}
 
 	for {
-		fmt.Println("one")
-		// irc = <-hw.irc
 		if hw.irc != nil {
 			if hw.irc.IsConnected() {
 				break
 			}
 		}
-		fmt.Println("two")
 	}
 
 	hw.irc.Cmd.Message(hw.config.IrcChannel, fmt.Sprintf("From: %s, Text: %s", sms.From, sms.Text))
 
-	fmt.Println(smsInfoReal)
+	log.Println(smsInfoReal)
 
-	return context.JSON(http.StatusOK, sms)
+	return context.JSON(http.StatusOK, "OK")
 }
 
 func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
@@ -96,6 +94,7 @@ func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
 
 	saslUser := appConfig.IrcSaslUser
 	saslPass := appConfig.IrcSaslPass
+
 	if saslUser != "" && saslPass != "" {
 		irc.Config.SASL = &girc.SASLPlain{
 			User: appConfig.IrcSaslUser,
@@ -114,7 +113,7 @@ func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
 		if err := irc.Connect(); err != nil {
 			log.Println(err)
 			log.Println("reconnecting in 30 seconds")
-			time.Sleep(30 * time.Second)
+			time.Sleep(reconnectTime * time.Second)
 		} else {
 			return
 		}
