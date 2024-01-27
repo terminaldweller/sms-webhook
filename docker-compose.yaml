@@ -16,7 +16,7 @@ services:
       - smsnet
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8090:8090"
+      - "127.0.0.1:8091:8090"
     depends_on:
       - nginx
     volumes:
