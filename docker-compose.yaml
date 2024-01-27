@@ -18,7 +18,7 @@ services:
     ports:
       - "127.0.0.1:8090:8090"
     depends_on:
-      - redis
+      - nginx
     volumes:
       - pb-vault:/sms-webhook/pb_data
       - ./config.toml:/opt/smswebhook/config.toml
