@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v5"
 	"github.com/lrstanley/girc"
 	"github.com/pelletier/go-toml/v2"
@@ -16,13 +15,8 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-var rdb *redis.Client
-
 const (
-	redisDialTimeout   = 5
-	redisReadTimeout   = 10
-	redisWriteTimetout = 10
-	reconnectTime      = 30
+	reconnectTime = 30
 )
 
 type handlerWrapper struct {
@@ -40,15 +34,12 @@ type SMS struct {
 }
 
 type TomlConfig struct {
-	IrcServer     string
-	IrcPort       int
-	IrcNick       string
-	IrcSaslUser   string
-	IrcSaslPass   string
-	IrcChannel    string
-	RedisAddress  string
-	RedisPassword string
-	RedisDB       int
+	IrcServer   string
+	IrcPort     int
+	IrcNick     string
+	IrcSaslUser string
+	IrcSaslPass string
+	IrcChannel  string
 }
 
 // curl -X 'POST' 'http://127.0.0.1:8090/sms' -H 'content-type: application/json; charset=utf-8' -d $'{"from":"1234567890","text":"Test"}'
@@ -134,16 +125,6 @@ func main() {
 	}
 
 	log.Println(appConfig)
-
-	rdb = redis.NewClient(&redis.Options{
-		Addr:         appConfig.RedisAddress,
-		Password:     appConfig.RedisPassword,
-		DB:           appConfig.RedisDB,
-		DialTimeout:  redisDialTimeout,
-		ReadTimeout:  redisReadTimeout,
-		WriteTimeout: redisWriteTimetout,
-	})
-	defer rdb.Close()
 
 	app := pocketbase.New()
 
