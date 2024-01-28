@@ -28,6 +28,7 @@ const (
 type handlerWrapper struct {
 	irc    *girc.Client
 	config TomlConfig
+	app    *pocketbase.PocketBase
 }
 
 type SMS struct {
@@ -49,6 +50,20 @@ type TomlConfig struct {
 
 // curl -X 'POST' 'http://127.0.0.1:8090/sms' -H 'content-type: application/json; charset=utf-8' -d $'{"from":"1234567890","text":"Test"}'
 func (hw handlerWrapper) postHandler(context echo.Context) error {
+	user, pass, ok := context.Request().BasicAuth()
+	if !ok {
+		return context.JSON(http.StatusUnauthorized, "unauthorized")
+	}
+
+	userRecord, err := hw.app.Dao().FindAuthRecordByUsername("users", user)
+	if err != nil {
+		return context.JSON(http.StatusUnauthorized, "unauthorized")
+	}
+
+	if userRecord.Get("password") != pass {
+		return context.JSON(http.StatusUnauthorized, "unauthorized")
+	}
+
 	sms := new(SMS)
 	if err := context.Bind(sms); err != nil {
 		return context.String(http.StatusBadRequest, "bad request")
@@ -142,7 +157,7 @@ func main() {
 	app := pocketbase.New()
 
 	ircChan := make(chan *girc.Client, 1)
-	hw := handlerWrapper{irc: nil, config: appConfig}
+	hw := handlerWrapper{irc: nil, config: appConfig, app: app}
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		go runIRC(appConfig, ircChan)
