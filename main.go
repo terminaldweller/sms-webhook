@@ -54,15 +54,13 @@ func (hw handlerWrapper) postHandler(context echo.Context) error {
 	if !ok {
 		return context.JSON(http.StatusUnauthorized, "unauthorized")
 	}
-	log.Println(user, pass)
 
 	userRecord, err := hw.app.Dao().FindAuthRecordByUsername("users", user)
 	if err != nil {
 		return context.JSON(http.StatusUnauthorized, "unauthorized")
 	}
-	log.Println(userRecord.Get("password"))
 
-	if userRecord.Get("password") != pass {
+	if !userRecord.ValidatePassword(pass) {
 		return context.JSON(http.StatusUnauthorized, "unauthorized")
 	}
 
