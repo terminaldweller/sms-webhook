@@ -1,7 +1,6 @@
 FROM alpine:3.19 as builder
 RUN apk update && apk upgrade && \
       apk add go git
-RUN git clone https://github.com/terminaldweller/sms-webhook
 WORKDIR /sms-webhook
 COPY go.sum go.mod /sms-webhook/
 RUN go mod download

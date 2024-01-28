@@ -116,14 +116,6 @@ func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
 	}
 }
 
-// func main() {
-// 	app := pocketbase.New()
-
-// 	if err := app.Start(); err != nil {
-// 		log.Fatal(err)
-// 	}
-// }
-
 func defaultPublicDir() string {
 	if strings.HasPrefix(os.Args[0], os.TempDir()) {
 		return "./pb_public"
@@ -244,13 +236,16 @@ func main() {
 
 	app.OnAfterBootstrap().PreAdd(func(e *core.BootstrapEvent) error {
 		app.Dao().ModelQueryTimeout = time.Duration(queryTimeout) * time.Second
+
 		return nil
 	})
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		e.Router.GET("/*", apis.StaticDirectoryHandler(os.DirFS(publicDir), indexFallback))
+
 		return nil
 	})
+
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}
