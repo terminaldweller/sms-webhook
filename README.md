@@ -14,12 +14,12 @@ Currently [this](https://github.com/bogkonstantin/android_income_sms_gateway_web
 An example config file:
 
 ```toml
-IrcServer = myirc.awesome.net
+IrcServer = "myirc.awesome.net"
 IrcPort = 6669
-IrcNick = mynick
-IrcSaslUser = mynick
-IrcSaslPass = h4x0r1337p055w0rd
-IrcChannel = 1337p17
+IrcNick = "mynick"
+IrcSaslUser = "mynick"
+IrcSaslPass = "h4x0r1337p055w0rd"
+IrcChannel = "1337p17"
 ```
 
 
