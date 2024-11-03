@@ -7,14 +7,15 @@ I have a made blogpost about it [here](https://blog.terminaldweller.com/posts/ho
 
 ### Features
 
-* The IRC bot supports SASL plain authentication.</br>
-* The webhook endpoint itself supports HTTP basic authentication.</br>
-* The webhook has [pocketbase](https://github.com/pocketbase/pocketbase) integrated so you can use that to create new users.</br>
+- The IRC bot supports SASL plain authentication.</br>
+- The webhook endpoint itself supports HTTP basic authentication.</br>
+- The webhook has [pocketbase](https://github.com/pocketbase/pocketbase) integrated so you can use that to create new users.</br>
 
 **_Note_**: Last but not least, you will need a forwarding agent that actually sends the SMS you get on your android device to the webhook endpoint.</br>
 Currently [this](https://github.com/bogkonstantin/android_income_sms_gateway_webhook) is what I'm using to forward my SMS to the webhook. Also make sure the app settings on android are changed accordingly because the forwarder needs to run in the background so make sure android does not battery-optimize it out of existence.</br>
 
 ### Config
+
 An example config file:
 
 ```toml
@@ -24,12 +25,13 @@ IrcNick = "mynick"
 IrcSaslUser = "mynick"
 IrcSaslPass = "h4x0r1337p055w0rd"
 IrcChannel = "1337p17"
+IrcChannelPass = "mychannelpassword"
 ```
-
 
 ### Deployment
 
 A docker compose file is available for a quick setup:
+
 ```yaml
 version: "3.9"
 services:
