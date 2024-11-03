@@ -40,12 +40,13 @@ type SMS struct {
 }
 
 type TomlConfig struct {
-	IrcServer   string
-	IrcPort     int
-	IrcNick     string
-	IrcSaslUser string
-	IrcSaslPass string
-	IrcChannel  string
+	IrcServer      string
+	IrcPort        int
+	IrcNick        string
+	IrcSaslUser    string
+	IrcSaslPass    string
+	IrcChannel     string
+	IrcChannelPass string
 }
 
 // curl -X 'POST' 'http://127.0.0.1:8090/sms' -H 'content-type: application/json; charset=utf-8' -d $'{"from":"1234567890","text":"Test"}'
@@ -114,7 +115,11 @@ func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
 	}
 
 	irc.Handlers.AddBg(girc.CONNECTED, func(c *girc.Client, e girc.Event) {
-		c.Cmd.Join(appConfig.IrcChannel)
+		if appConfig.IrcChannelPass != "" {
+			c.Cmd.JoinKey(appConfig.IrcChannel, appConfig.IrcChannelPass)
+		} else {
+			c.Cmd.Join(appConfig.IrcChannel)
+		}
 	})
 
 	// irc.Handlers.AddBg(girc.PRIVMSG, func(c *girc.Client, e girc.Event) {})
