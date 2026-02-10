@@ -40,7 +40,6 @@ type TomlConfig struct {
 	IrcChannelPass string
 }
 
-// curl -X 'POST' 'http://127.0.0.1:8090/sms' -H 'content-type: application/json; charset=utf-8' -d $'{"from":"1234567890","text":"Test"}'
 func (hw handlerWrapper) postHandler(e *core.RequestEvent) error {
 	user, pass, ok := e.Request.BasicAuth()
 	if !ok {
@@ -125,14 +124,6 @@ func runIRC(appConfig TomlConfig, ircChan chan *girc.Client) {
 	}
 }
 
-// func defaultPublicDir() string {
-// 	if strings.HasPrefix(os.Args[0], os.TempDir()) {
-// 		return "./pb_public"
-// 	}
-
-// 	return filepath.Join(os.Args[0], "../pb_public")
-// }
-
 func main() {
 	var appConfig TomlConfig
 
@@ -157,7 +148,7 @@ func main() {
 		go runIRC(appConfig, ircChan)
 		hw.irc = <-ircChan
 
-		e.Router.POST("/sms", hw.postHandler)
+		e.Router.POST("/hook", hw.postHandler)
 
 		e.Next()
 
