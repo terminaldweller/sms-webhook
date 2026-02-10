@@ -1,6 +1,6 @@
 services:
-  sms-webhook:
-    image: sms-webhook
+  irc-webhook:
+    image: irc-webhook
     build:
       context: .
     deploy:
@@ -23,8 +23,6 @@ services:
       - ./config.toml:/opt/smswebhook/config.toml
     cap_drop:
       - ALL
-    dns:
-      - 9.9.9.9
     environment:
       - SERVER_DEPLOYMENT_TYPE=deployment
     entrypoint: ["/sms-webhook/sms-webhook"]
@@ -54,10 +52,13 @@ services:
       - NET_BIND_SERVICE
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt/live/sms.terminaldweller.com/fullchain.pem:/etc/letsencrypt/live/sms.terminaldweller.com/fullchain.pem:ro
-      - /etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem:/etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem:ro
+      # - /etc/letsencrypt/live/sms.terminaldweller.com/fullchain.pem:/etc/letsencrypt/live/sms.terminaldweller.com/fullchain.pem:ro
+      # - /etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem:/etc/letsencrypt/live/sms.terminaldweller.com/privkey.pem:ro
+      - ./server.cert:/certs/server.cert:ro
+      - ./server.key:/certs/server.key:ro
 networks:
   smsnet:
+    enable_ipv6: true
     driver: bridge
 volumes:
   sms-vault:
