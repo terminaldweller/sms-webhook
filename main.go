@@ -24,12 +24,10 @@ type handlerWrapper struct {
 	app    *pocketbase.PocketBase
 }
 
-type SMS struct {
-	From          string `json:"from"`
-	Text          string `json:"text"`
-	SentStamp     int64  `json:"sentStamp"`
-	ReceivedStamp int64  `json:"receivedStamp"`
-	Sim           string `json:"sim"`
+type Alert struct {
+	Sender      string `json:"sender"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 type TomlConfig struct {
@@ -58,17 +56,15 @@ func (hw handlerWrapper) postHandler(e *core.RequestEvent) error {
 		return e.JSON(http.StatusUnauthorized, "unauthorized")
 	}
 
-	sms := new(SMS)
+	sms := new(Alert)
 	if err := e.BindBody(sms); err != nil {
 		return e.String(http.StatusBadRequest, "bad request")
 	}
 
-	smsInfoReal := SMS{
-		From:          sms.From,
-		Text:          sms.Text,
-		SentStamp:     sms.SentStamp,
-		ReceivedStamp: sms.ReceivedStamp,
-		Sim:           sms.Sim,
+	smsInfoReal := Alert{
+		Sender:      sms.Sender,
+		Title:       sms.Title,
+		Description: sms.Description,
 	}
 
 	for {
@@ -79,7 +75,7 @@ func (hw handlerWrapper) postHandler(e *core.RequestEvent) error {
 		}
 	}
 
-	hw.irc.Cmd.Message(hw.config.IrcChannel, fmt.Sprintf("From: %s, Text: %s", sms.From, sms.Text))
+	hw.irc.Cmd.Message(hw.config.IrcChannel, fmt.Sprintf("Sender: %s, Title: %s, Description: %s", sms.Sender, sms.Title, sms.Description))
 
 	log.Println(smsInfoReal)
 
